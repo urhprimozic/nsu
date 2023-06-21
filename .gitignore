@@ -1,1 +1,4 @@
 img/
+*.pkl
+*.bkup
+hall_of_fame_*

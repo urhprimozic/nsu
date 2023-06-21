@@ -24,7 +24,7 @@ def lasso_regresija(X, y, lam=1, meja=1e-2):
             if len(izraz) > 0:
                 izraz += " + "
             izraz +=  f"{b:.3f}*{imena[i]}"
-    return izraz, napaka
+    return izraz, napaka, beta
 
 
 def ridge_regresija(X, y, lam=1, meja=1e-2):
