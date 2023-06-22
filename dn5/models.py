@@ -30,7 +30,8 @@ class fully_connected(torch.nn.Module):
                 self.layers.append(Linear(l, out_size))
             else:
                 self.layers.append(Linear(l, layer_sizes[i + 1]))
-        self.layers = tuple(self.layers)
+        #self.layers = tuple(self.layers)
+        self.layers = torch.nn.ParameterList(self.layers)
 
     def forward(self, x):
         # reshape
@@ -50,16 +51,18 @@ class convolution(torch.nn.Module):
 
           Parametri
         ----------
-        c = kernel size
-        l = št out channels
-        p = (a,b) = pooling size..
+        settings = touple of form (c, l, p), where
+            c = kernel size
+            l = št out channels
+            p = (a,b) = pooling size..
         out = velikost izhoda
 
     Input v mrežo je tabela oblike N x n_občin
     """
 
-    def __init__(self,M, c, l, p, out=12, N=14, n_obcin=193) -> None:
+    def __init__(self,M, settings, out=12, N=14, n_obcin=193) -> None:
         super().__init__()
+        c, l, p = settings
         self.conv = Conv2d(1, l, c)
         self.pool = MaxPool2d((p[0], p[1]))
         h = int((N - c + 1) / p[0])
@@ -94,8 +97,10 @@ class double_convolution(torch.nn.Module):
     Input v mrežo je tabela oblike N x n_občin
     """
 
-    def __init__(self,M, c1, l1, c2, l2, p1, p2, out=12, N=14, n_obcin=193) -> None:
+    def __init__(self,M, d_settings, out=12, N=14, n_obcin=193) -> None:
         super().__init__()
+        # c1, l1, c2, l2, p1, p2 = d_settings
+        c1, l1, p1, c2, l2, p2 = d_settings
         self.conv1 = Conv2d(1, l1, c1)
         self.pool1 = MaxPool2d((p1[0], p1[1]))
 
@@ -147,5 +152,71 @@ class nn_test(torch.nn.Module):
         x = self.lin3(x)
         return x
 
-def criterion_function(config):
-    pass
+def fit(config, params, X, y, n_epochs=10, batch_size=10):
+    '''
+    Fits model, described in config to data X,y
+    '''
+    model = config['algo']['model'](**params)
+    loss_function = torch.nn.MSELoss()  
+    opt = torch.optim.Adam(model.parameters(), lr=0.01, weight_decay=5e-4) 
+    def train(batch):   
+        X_, y_ = batch
+        opt.zero_grad()  
+        
+        # go throue the whole dataset
+        for index, ex in enumerate(X_):
+            tmp_out = model(ex)
+            tmp_out = torch.reshape(tmp_out, (1,)+tuple(tmp_out.shape))
+            if index == 0:
+                out = tmp_out
+            else:
+                out = torch.cat((out, tmp_out))
+
+
+
+
+        napaka = loss_function(out, y_) 
+        napaka.backward()  
+        opt.step() 
+        return napaka
+    model.train()
+    for epoch in range(1, n_epochs):
+        for batch in range(len(X) // batch_size):
+            loss = train((X[batch: batch + batch_size], y[batch: batch + batch_size]))  
+       # if epoch%10 == 0:
+        print(f'Epoch: {epoch:03d}, Loss: {loss:.4f}')
+    return model
+
+def fit_model(model, X, y, n_epochs=10, batch_size=10):
+    '''
+    Fits model, described in config to data X,y
+    '''
+    loss_function = torch.nn.MSELoss()  
+    opt = torch.optim.Adam(model.parameters(), lr=0.01, weight_decay=5e-4) 
+    def train(batch):   
+        X_, y_ = batch
+        opt.zero_grad()  
+        
+        # go throue the whole dataset
+        for index, ex in enumerate(X_):
+            tmp_out = model(ex)
+            tmp_out = torch.reshape(tmp_out, (1,)+tuple(tmp_out.shape))
+            if index == 0:
+                out = tmp_out
+            else:
+                out = torch.cat((out, tmp_out))
+
+
+
+
+        napaka = loss_function(out, y_) 
+        napaka.backward()  
+        opt.step() 
+        return napaka
+    model.train()
+    for epoch in range(1, n_epochs):
+        for batch in range(len(X) // batch_size):
+            loss = train((X[batch: batch + batch_size], y[batch: batch + batch_size]))  
+       # if epoch%10 == 0:
+        print(f'Epoch: {epoch:03d}, Loss: {loss:.4f}')
+    return model
